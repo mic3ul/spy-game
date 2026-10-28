@@ -337,5 +337,27 @@ export default {
       console.error("Update handler failed", error);
     }
     return new Response("ok", { status: 200 });
+  },
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil((async () => {
+      const target = "https://dalil-spy-bot.mic3ul-weirdwolf.workers.dev/";
+      const current = await tg(env, "getWebhookInfo", {});
+      if (!current || !current.ok) {
+        console.error("Webhook status check failed");
+        return;
+      }
+      if (!current.result || current.result.url !== target) {
+        const registered = await tg(env, "setWebhook", {
+          url: target,
+          allowed_updates: ["message", "callback_query"]
+        });
+        if (!registered || !registered.ok) {
+          console.error("Webhook registration failed");
+          return;
+        }
+      }
+      const verified = await tg(env, "getWebhookInfo", {});
+      console.log("Webhook verification", Boolean(verified && verified.ok), verified && verified.result && verified.result.url, verified && verified.result && verified.result.pending_update_count);
+    })());
   }
 };
