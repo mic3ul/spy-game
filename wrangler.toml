@@ -1,0 +1,8 @@
+name = "dalil-spy-bot"
+main = "src/worker.js"
+compatibility_date = "2026-10-29"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dalil-spy-db"
+database_id = "1fb99fbc-d136-418d-b850-1ae26f493c65"
