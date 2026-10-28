@@ -153,9 +153,9 @@ async function handleMessage(env, message) {
     buttons.push({ text: "🕵️ Join", callback_data: "join" });
     const keyboard = { inline_keyboard: [buttons] };
     return sendAnimated(env, chatId,
-      "╭━━━ ملف رقم 017 ━━━╮\\n«ظلّ الدوحة»\\n╰━━━━━━━━━━━━━━╯\\n\\n" +
-      "ورد بلاغ عن تسريب معلومة من اجتماع مغلق. أحد الموجودين ليس كما يدّعي.\\n\\n" +
-      "اضغط Join للانضمام إلى الملف، أو Start لفتح البوت بالخاص وتفعيل استقبال بطاقتك السرّية. تحتاجون 4 لاعبين على الأقل.\\n" +
+      "╭━━━ ملف رقم 017 ━━━╮\n«ظلّ الدوحة»\n╰━━━━━━━━━━━━━━╯\n\n" +
+      "ورد بلاغ عن تسريب معلومة من اجتماع مغلق. أحد الموجودين ليس كما يدّعي.\n\n" +
+      "اضغط Join للانضمام إلى الملف، أو Start لفتح البوت بالخاص وتفعيل استقبال بطاقتك السرّية. تحتاجون 4 لاعبين على الأقل.\n" +
       "بعد الضغط على Start، اضغط Start داخل المحادثة الخاصة أيضاً.",
       { reply_markup: keyboard }
     );
@@ -269,18 +269,19 @@ async function resolveVote(env, chatId, room) {
   const spyCaught = accusedId === room.spy_player_id;
   await env.DB.prepare("UPDATE spy_rooms SET status=? WHERE chat_id=?").bind(spyCaught ? "guessing" : "ended", chatId).run();
   const storyEnding = spyCaught
-    ? "تم كشف الجاسوس. لكن الملف ما انتهى: عنده فرصة أخيرة يخمّن الموقع برسالة خاصة للبوت تبدأ بـ /guess ثم اسم المكان."
+    ? "تم كشف الجاسوس. بقيت له فرصة أخيرة: يرسل للمحادثة الخاصة /guess ثم اسم المكان. لن يُكشف الموقع قبل تخمينه."
     : "اتهمتم الشخص الخطأ. الجاسوس أفلت من الرقابة وربح الجولة.";
-  await say(env, chatId,
+  const spyName = players.find(p => p.user_id === room.spy_player_id)?.first_name || "غير معروف";
+  const resultText =
     "📁 نتيجة الملف 017\n\n" +
     (accused ? "المتهم: " + accused.first_name + "\n" : "") +
     "الأصوات: " + rows[0].n + "\n" +
     (spyCaught ? "النتيجة: تم كشف الجاسوس.\n" : "النتيجة: الجاسوس لم يُكشف.\n") +
-    storyEnding + "\n\n" +
-    "الموقع الحقيقي: " + room.location + "\n" +
-    "الجاسوس كان: " + (players.find(p => p.user_id === room.spy_player_id)?.first_name || "غير معروف") +
-    "\n\nابدؤوا قضية جديدة باستخدام /newgame."
-  );
+    storyEnding + "\n" +
+    (spyCaught ? "" : "\nالموقع الحقيقي: " + room.location + "\n") +
+    "الجاسوس كان: " + spyName +
+    "\n\nابدؤوا قضية جديدة باستخدام /newgame.";
+  return sendAnimated(env, chatId, resultText);
 }
 async function sendRealPhoto(env, chatId, room) {
   const location = room && room.location ? room.location : LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)].name;
