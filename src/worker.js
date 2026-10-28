@@ -96,6 +96,20 @@ async function handleMessage(env, message) {
   const user = message.from || {};
   const userId = String(user.id);
 
+  if (cmd === "/guess" && !isGroup(message)) {
+    const guess = text.replace(/^\\/guess(?:@\\w+)?\\s*/i, "").trim();
+    const room = await env.DB.prepare("SELECT * FROM rooms WHERE spy_player_id=? AND status='guessing' ORDER BY created_at DESC LIMIT 1").bind(userId).first();
+    if (!room) return say(env, chatId, "ما عندك تخمين مفتوح حالياً. لازم ينكشف دورك أولاً حتى تحصل على فرصة أخيرة.");
+    if (!guess) return say(env, chatId, "اكتب تخمينك بعد الأمر، مثال: /guess سوق واقف");
+    const normalize = value => String(value).replace(/[\\u064B-\\u065F\\u0670]/g, "").replace(/[إأآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\\s+/g, " ").trim().toLowerCase();
+    const correct = normalize(guess) === normalize(room.location);
+    await env.DB.prepare("UPDATE rooms SET status='ended' WHERE chat_id=?").bind(room.chat_id).run();
+    await say(env, room.chat_id, correct
+      ? "🕶️ الجاسوس خطف الفوز في اللحظة الأخيرة! خمن الموقع الصحيح: " + room.location + ".\nملف 017 أُغلق."
+      : "🛡️ حتى بعد انكشافه، أخفق الجاسوس في التخمين. الفريق يفوز!\nالموقع الصحيح: " + room.location + ".\nملف 017 أُغلق.");
+    return say(env, chatId, correct ? "إجابة صحيحة. فزت بالملف." : "تخمين غير صحيح. انتهت فرصتك.");
+  }
+
   if (cmd === "/start") {
     return say(env, chatId,
       "حيّاك الله في «ظلّ الدوحة» — لعبة شكّ وتحقيق ومهمات سرّية.\n\n" +
@@ -241,7 +255,7 @@ async function resolveVote(env, chatId, room) {
   const players = await getPlayers(env, chatId);
   const accused = players.find(p => p.user_id === accusedId);
   const spyCaught = accusedId === room.spy_player_id;
-  await env.DB.prepare("UPDATE rooms SET status='ended' WHERE chat_id=?").bind(chatId).run();
+  await env.DB.prepare("UPDATE rooms SET status=? WHERE chat_id=?").bind(spyCaught ? "guessing" : "ended", chatId).run();
   const storyEnding = spyCaught
     ? "تم كشف الجاسوس. لكن الملف ما انتهى: عنده فرصة أخيرة يخمّن الموقع برسالة خاصة للبوت تبدأ بـ /guess ثم اسم المكان."
     : "اتهمتم الشخص الخطأ. الجاسوس أفلت من الرقابة وربح الجولة.";
