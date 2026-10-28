@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS rooms (
+CREATE TABLE IF NOT EXISTS spy_rooms (
   chat_id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   host_id TEXT NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   mission TEXT,
   created_at INTEGER NOT NULL
 );
-CREATE TABLE IF NOT EXISTS players (
+CREATE TABLE IF NOT EXISTS spy_players (
   chat_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
   username TEXT NOT NULL DEFAULT '',
@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS players (
   alive INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY (chat_id, user_id)
 );
-CREATE TABLE IF NOT EXISTS votes (
+CREATE TABLE IF NOT EXISTS spy_votes (
   chat_id TEXT NOT NULL,
   voter_id TEXT NOT NULL,
   target_id TEXT NOT NULL,
   PRIMARY KEY (chat_id, voter_id)
 );
-CREATE INDEX IF NOT EXISTS idx_players_chat ON players(chat_id);
-CREATE INDEX IF NOT EXISTS idx_votes_chat ON votes(chat_id);
+CREATE INDEX IF NOT EXISTS idx_spy_players_chat ON spy_players(chat_id);
+CREATE INDEX IF NOT EXISTS idx_spy_votes_chat ON spy_votes(chat_id);
