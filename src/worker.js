@@ -59,6 +59,14 @@ async function tg(env, method, body) {
   if (!data.ok) console.error("Telegram API error", method, data.description);
   return data;
 }
+const SPY_GIF = "https://media.giphy.com/media/3o85xy2tfBPyvJ1d3G/giphy.gif";
+async function sendAnimated(env, chatId, caption, extra = {}) {
+  return tg(env, "sendAnimation", { chat_id: chatId, animation: SPY_GIF, caption, ...extra });
+}
+async function getBotUsername(env) {
+  const me = await tg(env, "getMe", {});
+  return me && me.ok && me.result && me.result.username ? me.result.username : null;
+}
 async function say(env, chatId, text, extra = {}) {
   return tg(env, "sendMessage", { chat_id: chatId, text, ...extra });
 }
@@ -139,12 +147,16 @@ async function handleMessage(env, message) {
     await resetRoom(env, chatId);
     await env.DB.prepare("INSERT INTO spy_rooms (chat_id, title, host_id, status, round, created_at) VALUES (?, ?, ?, 'waiting', 1, ?)")
       .bind(chatId, message.chat.title || "المجموعة", userId, Date.now()).run();
-    const keyboard = { inline_keyboard: [[{ text: "🕵️ انضم للمهمة", callback_data: "join" }]] };
-    return say(env, chatId,
-      "╭━━━ ملف رقم 017 ━━━╮\n«ظلّ الدوحة»\n╰━━━━━━━━━━━━━━╯\n\n" +
-      "ورد بلاغ عن تسريب معلومة من اجتماع مغلق. أحد الموجودين ليس كما يدّعي.\n\n" +
-      "اجمعوا الفريق بالضغط على زر الانضمام أو باستخدام /join. تحتاجون 4 لاعبين على الأقل.\n" +
-      "قبل البداية: كل لاعب يفتح البوت بالخاص ويضغط /start.",
+    const username = await getBotUsername(env);
+    const buttons = [];
+    if (username) buttons.push({ text: "▶️ Start", url: "https://t.me/" + username + "?start=spy" });
+    buttons.push({ text: "🕵️ Join", callback_data: "join" });
+    const keyboard = { inline_keyboard: [buttons] };
+    return sendAnimated(env, chatId,
+      "╭━━━ ملف رقم 017 ━━━╮\\n«ظلّ الدوحة»\\n╰━━━━━━━━━━━━━━╯\\n\\n" +
+      "ورد بلاغ عن تسريب معلومة من اجتماع مغلق. أحد الموجودين ليس كما يدّعي.\\n\\n" +
+      "اضغط Join للانضمام إلى الملف، أو Start لفتح البوت بالخاص وتفعيل استقبال بطاقتك السرّية. تحتاجون 4 لاعبين على الأقل.\\n" +
+      "بعد الضغط على Start، اضغط Start داخل المحادثة الخاصة أيضاً.",
       { reply_markup: keyboard }
     );
   }
@@ -213,7 +225,7 @@ async function openVote(env, chatId) {
   await removeVotes(env, chatId);
   await env.DB.prepare("UPDATE spy_rooms SET status='voting' WHERE chat_id=?").bind(chatId).run();
   const keyboard = { inline_keyboard: players.map(p => [{ text: "🔎 " + p.first_name, callback_data: "vote:" + p.user_id }]) };
-  return say(env, chatId, "🗳️ لحظة الحسم. اختَر الشخص الذي تشك أنه الجاسوس. تصويتك سري:", { reply_markup: keyboard });
+  return sendAnimated(env, chatId, "🗳️ لحظة الحسم. اختَر الشخص الذي تشك أنه الجاسوس. تصويتك سري:", { reply_markup: keyboard });
 }
 async function handleCallback(env, query) {
   const data = query.data || "";
