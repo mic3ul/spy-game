@@ -275,22 +275,31 @@ async function sendRealPhoto(env, chatId, room) {
   const query = PHOTO_QUERIES[location] || "Doha Qatar city photography";
   try {
     const url = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" +
-      encodeURIComponent("filetype:bitmap " + query) +
+      encodeURIComponent("filetype:bitmap " + query + " photograph") +
       "&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1200&format=json&origin=*";
     const response = await fetch(url, { headers: { "User-Agent": "DalilSpyBot/1.0 (Telegram game; Wikimedia Commons photo search)" } });
     const data = await response.json();
     const pages = Object.values((data.query && data.query.pages) || {});
-    const candidates = pages.filter(p => p.imageinfo && p.imageinfo[0] && p.imageinfo[0].url && /\.(jpg|jpeg|png)$/i.test(p.imageinfo[0].url));
-    if (!candidates.length) return say(env, chatId, "ما حصلت صورة مناسبة الحين. جرّب /photo بعد شوي. الصور هنا من أرشيف ويكيميديا كومنز، مو مولّدة بالذكاء الاصطناعي.");
+    const candidates = pages.filter(p => {
+      const image = p.imageinfo && p.imageinfo[0];
+      if (!image || !image.url || !/\.(jpg|jpeg)$/i.test(image.url)) return false;
+      const meta = image.extmetadata || {};
+      const searchable = [p.title, meta.Description && meta.Description.value].join(" ").replace(/<[^>]*>/g, " ");
+      return !/(AI[- ]generated|artificial intelligence|Midjourney|Stable Diffusion|DALL[- ]?E|synthetic image|illustration|digital art|rendering)/i.test(searchable);
+    });
+    if (!candidates.length) return say(env, chatId, "ما حصلت صورة فوتوغرافية مناسبة الحين. جرّب /photo بعد شوي. الصور تُجلب من ويكيميديا كومنز وليست مولّدة داخل اللعبة.");
     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
     const info = chosen.imageinfo[0];
     const imageUrl = info.thumburl || info.url;
     const title = (chosen.title || "").replace(/^File:/, "").replace(/_/g, " ");
-    const license = info.extmetadata && info.extmetadata.LicenseShortName && info.extmetadata.LicenseShortName.value || "Wikimedia Commons";
+    const meta = info.extmetadata || {};
+    const license = meta.LicenseShortName && meta.LicenseShortName.value || "راجع صفحة الملف";
+    const creator = meta.Artist && meta.Artist.value ? meta.Artist.value.replace(/<[^>]*>/g, "").slice(0, 160) : "غير مذكور";
+    const sourceUrl = info.descriptionurl || ("https://commons.wikimedia.org/wiki/" + encodeURIComponent((chosen.title || "").replace(/ /g, "_")));
     return tg(env, "sendPhoto", {
       chat_id: chatId,
       photo: imageUrl,
-      caption: "📷 صورة فوتوغرافية من ويكيميديا كومنز\nالمشهد: " + location + "\nالملف: " + title + "\nالترخيص: " + license + "\nالمصدر: Wikimedia Commons"
+      caption: "📷 صورة فوتوغرافية من ويكيميديا كومنز\nالمشهد: " + location + "\nالملف: " + title + "\nالمصوّر: " + creator + "\nالترخيص: " + license + "\nالمصدر: " + sourceUrl
     });
   } catch (error) {
     console.error("Photo search failed", error);
