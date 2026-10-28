@@ -72,19 +72,19 @@ function commandName(text = "") {
   return text.trim().split(/\s+/)[0].split("@")[0].toLowerCase();
 }
 async function getRoom(env, chatId) {
-  return env.DB.prepare("SELECT * FROM rooms WHERE chat_id = ?").bind(String(chatId)).first();
+  return env.DB.prepare("SELECT * FROM spy_rooms WHERE chat_id = ?").bind(String(chatId)).first();
 }
 async function getPlayers(env, chatId) {
-  const result = await env.DB.prepare("SELECT * FROM players WHERE chat_id = ? ORDER BY joined_at ASC").bind(String(chatId)).all();
+  const result = await env.DB.prepare("SELECT * FROM spy_players WHERE chat_id = ? ORDER BY joined_at ASC").bind(String(chatId)).all();
   return result.results || [];
 }
 async function removeVotes(env, chatId) {
-  await env.DB.prepare("DELETE FROM votes WHERE chat_id = ?").bind(String(chatId)).run();
+  await env.DB.prepare("DELETE FROM spy_votes WHERE chat_id = ?").bind(String(chatId)).run();
 }
 async function resetRoom(env, chatId) {
-  await env.DB.prepare("DELETE FROM votes WHERE chat_id = ?").bind(String(chatId)).run();
-  await env.DB.prepare("DELETE FROM players WHERE chat_id = ?").bind(String(chatId)).run();
-  await env.DB.prepare("DELETE FROM rooms WHERE chat_id = ?").bind(String(chatId)).run();
+  await env.DB.prepare("DELETE FROM spy_votes WHERE chat_id = ?").bind(String(chatId)).run();
+  await env.DB.prepare("DELETE FROM spy_players WHERE chat_id = ?").bind(String(chatId)).run();
+  await env.DB.prepare("DELETE FROM spy_rooms WHERE chat_id = ?").bind(String(chatId)).run();
 }
 function isGroup(message) {
   return message.chat && (message.chat.type === "group" || message.chat.type === "supergroup");
@@ -98,12 +98,12 @@ async function handleMessage(env, message) {
 
   if (cmd === "/guess" && !isGroup(message)) {
     const guess = text.replace(/^\/guess(?:@\w+)?\s*/i, "").trim();
-    const room = await env.DB.prepare("SELECT * FROM rooms WHERE spy_player_id=? AND status='guessing' ORDER BY created_at DESC LIMIT 1").bind(userId).first();
+    const room = await env.DB.prepare("SELECT * FROM spy_rooms WHERE spy_player_id=? AND status='guessing' ORDER BY created_at DESC LIMIT 1").bind(userId).first();
     if (!room) return say(env, chatId, "ما عندك تخمين مفتوح حالياً. لازم ينكشف دورك أولاً حتى تحصل على فرصة أخيرة.");
     if (!guess) return say(env, chatId, "اكتب تخمينك بعد الأمر، مثال: /guess سوق واقف");
     const normalize = value => String(value).replace(/[\u064B-\u065F\u0670]/g, "").replace(/[إأآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim().toLowerCase();
     const correct = normalize(guess) === normalize(room.location);
-    await env.DB.prepare("UPDATE rooms SET status='ended' WHERE chat_id=?").bind(room.chat_id).run();
+    await env.DB.prepare("UPDATE spy_rooms SET status='ended' WHERE chat_id=?").bind(room.chat_id).run();
     await say(env, room.chat_id, correct
       ? "🕶️ الجاسوس خطف الفوز في اللحظة الأخيرة! خمن الموقع الصحيح: " + room.location + ".\nملف 017 أُغلق."
       : "🛡️ حتى بعد انكشافه، أخفق الجاسوس في التخمين. الفريق يفوز!\nالموقع الصحيح: " + room.location + ".\nملف 017 أُغلق.");
@@ -137,7 +137,7 @@ async function handleMessage(env, message) {
       return say(env, chatId, "فيه ملف مفتوح بالفعل. خلّصوا الجولة أو استخدموا /endgame أول.");
     }
     await resetRoom(env, chatId);
-    await env.DB.prepare("INSERT INTO rooms (chat_id, title, host_id, status, round, created_at) VALUES (?, ?, ?, 'waiting', 1, ?)")
+    await env.DB.prepare("INSERT INTO spy_rooms (chat_id, title, host_id, status, round, created_at) VALUES (?, ?, ?, 'waiting', 1, ?)")
       .bind(chatId, message.chat.title || "المجموعة", userId, Date.now()).run();
     const keyboard = { inline_keyboard: [[{ text: "🕵️ انضم للمهمة", callback_data: "join" }]] };
     return say(env, chatId,
@@ -169,9 +169,9 @@ async function joinPlayer(env, chatId, user) {
   const room = await getRoom(env, chatId);
   if (!room || room.status !== "waiting") return say(env, chatId, "ما فيه ملف ينتظر لاعبين. افتحوا ملفاً جديداً بـ /newgame.");
   const userId = String(user.id);
-  const existing = await env.DB.prepare("SELECT user_id FROM players WHERE chat_id = ? AND user_id = ?").bind(chatId, userId).first();
+  const existing = await env.DB.prepare("SELECT user_id FROM spy_players WHERE chat_id = ? AND user_id = ?").bind(chatId, userId).first();
   if (existing) return say(env, chatId, "أنت مسجل معنا بالفعل يا " + mention(user) + ".");
-  await env.DB.prepare("INSERT INTO players (chat_id, user_id, username, first_name, joined_at, role, alive) VALUES (?, ?, ?, ?, ?, 'pending', 1)")
+  await env.DB.prepare("INSERT INTO spy_players (chat_id, user_id, username, first_name, joined_at, role, alive) VALUES (?, ?, ?, ?, ?, 'pending', 1)")
     .bind(chatId, userId, user.username || "", user.first_name || "لاعب", Date.now()).run();
   const players = await getPlayers(env, chatId);
   return say(env, chatId, "تم تسجيل " + mention(user) + " في الملف. عدد الفريق: " + players.length + " لاعب.");
@@ -185,7 +185,7 @@ async function beginGame(env, chatId) {
   const spy = players[Math.floor(Math.random() * players.length)];
   const scene = SCENES[Math.floor(Math.random() * SCENES.length)];
   const mission = MISSIONS[Math.floor(Math.random() * MISSIONS.length)];
-  await env.DB.prepare("UPDATE rooms SET status='playing', location=?, spy_player_id=?, scene=?, mission=? WHERE chat_id=?")
+  await env.DB.prepare("UPDATE spy_rooms SET status='playing', location=?, spy_player_id=?, scene=?, mission=? WHERE chat_id=?")
     .bind(location.name, spy.user_id, scene, mission, chatId).run();
   for (const player of players) {
     const isSpy = player.user_id === spy.user_id;
@@ -211,7 +211,7 @@ async function openVote(env, chatId) {
   const players = (await getPlayers(env, chatId)).filter(p => p.alive);
   if (players.length < 3) return say(env, chatId, "عدد اللاعبين ما يكفي للتصويت.");
   await removeVotes(env, chatId);
-  await env.DB.prepare("UPDATE rooms SET status='voting' WHERE chat_id=?").bind(chatId).run();
+  await env.DB.prepare("UPDATE spy_rooms SET status='voting' WHERE chat_id=?").bind(chatId).run();
   const keyboard = { inline_keyboard: players.map(p => [{ text: "🔎 " + p.first_name, callback_data: "vote:" + p.user_id }]) };
   return say(env, chatId, "🗳️ لحظة الحسم. اختَر الشخص الذي تشك أنه الجاسوس. تصويتك سري:", { reply_markup: keyboard });
 }
@@ -230,24 +230,24 @@ async function handleCallback(env, query) {
     if (!room || room.status !== "voting") return answerCallback(env, query.id, "التصويت غير مفتوح.");
     const target = data.slice(5);
     if (target === String(user.id)) return answerCallback(env, query.id, "ما تقدر تصوّت على نفسك.");
-    const voter = await env.DB.prepare("SELECT user_id FROM players WHERE chat_id=? AND user_id=? AND alive=1").bind(chatId, String(user.id)).first();
-    const accused = await env.DB.prepare("SELECT user_id FROM players WHERE chat_id=? AND user_id=? AND alive=1").bind(chatId, target).first();
+    const voter = await env.DB.prepare("SELECT user_id FROM spy_players WHERE chat_id=? AND user_id=? AND alive=1").bind(chatId, String(user.id)).first();
+    const accused = await env.DB.prepare("SELECT user_id FROM spy_players WHERE chat_id=? AND user_id=? AND alive=1").bind(chatId, target).first();
     if (!voter || !accused) return answerCallback(env, query.id, "لازم تكون لاعباً مسجلاً.");
-    await env.DB.prepare("INSERT INTO votes (chat_id, voter_id, target_id) VALUES (?, ?, ?) ON CONFLICT(chat_id, voter_id) DO UPDATE SET target_id=excluded.target_id")
+    await env.DB.prepare("INSERT INTO spy_votes (chat_id, voter_id, target_id) VALUES (?, ?, ?) ON CONFLICT(chat_id, voter_id) DO UPDATE SET target_id=excluded.target_id")
       .bind(chatId, String(user.id), target).run();
     await answerCallback(env, query.id, "وصل صوتك بسرية.");
-    const total = await env.DB.prepare("SELECT COUNT(*) AS n FROM players WHERE chat_id=? AND alive=1").bind(chatId).first();
-    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM votes WHERE chat_id=?").bind(chatId).first();
+    const total = await env.DB.prepare("SELECT COUNT(*) AS n FROM spy_players WHERE chat_id=? AND alive=1").bind(chatId).first();
+    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM spy_votes WHERE chat_id=?").bind(chatId).first();
     if (count.n >= total.n) return resolveVote(env, chatId, room);
     return null;
   }
 }
 async function resolveVote(env, chatId, room) {
-  const result = await env.DB.prepare("SELECT target_id, COUNT(*) AS n FROM votes WHERE chat_id=? GROUP BY target_id ORDER BY n DESC").bind(chatId).all();
+  const result = await env.DB.prepare("SELECT target_id, COUNT(*) AS n FROM spy_votes WHERE chat_id=? GROUP BY target_id ORDER BY n DESC").bind(chatId).all();
   const rows = result.results || [];
   if (!rows.length) return;
   if (rows.length > 1 && rows[0].n === rows[1].n) {
-    await env.DB.prepare("UPDATE rooms SET status='playing' WHERE chat_id=?").bind(chatId).run();
+    await env.DB.prepare("UPDATE spy_rooms SET status='playing' WHERE chat_id=?").bind(chatId).run();
     await removeVotes(env, chatId);
     return say(env, chatId, "⚖️ تعادل في الأصوات. ما فيه إدانة هالجولة. خذوا دقيقة للنقاش ثم استخدموا /vote مرة ثانية.");
   }
@@ -255,7 +255,7 @@ async function resolveVote(env, chatId, room) {
   const players = await getPlayers(env, chatId);
   const accused = players.find(p => p.user_id === accusedId);
   const spyCaught = accusedId === room.spy_player_id;
-  await env.DB.prepare("UPDATE rooms SET status=? WHERE chat_id=?").bind(spyCaught ? "guessing" : "ended", chatId).run();
+  await env.DB.prepare("UPDATE spy_rooms SET status=? WHERE chat_id=?").bind(spyCaught ? "guessing" : "ended", chatId).run();
   const storyEnding = spyCaught
     ? "تم كشف الجاسوس. لكن الملف ما انتهى: عنده فرصة أخيرة يخمّن الموقع برسالة خاصة للبوت تبدأ بـ /guess ثم اسم المكان."
     : "اتهمتم الشخص الخطأ. الجاسوس أفلت من الرقابة وربح الجولة.";
