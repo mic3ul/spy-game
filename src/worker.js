@@ -321,6 +321,18 @@ async function sendRealPhoto(env, chatId, room) {
 }
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/repair-hook-7d4a91c82f6e4b13") {
+      if (!env.BOT_TOKEN) return new Response("BOT_TOKEN binding missing", { status: 500 });
+      const target = "https://dalil-spy-bot.mic3ul-weirdwolf.workers.dev/";
+      const registered = await tg(env, "setWebhook", { url: target, allowed_updates: ["message", "callback_query"] });
+      if (!registered || !registered.ok) return new Response("Webhook registration failed: " + (registered && registered.description || "Telegram API error"), { status: 502 });
+      const verified = await tg(env, "getWebhookInfo", {});
+      if (!verified || !verified.ok || !verified.result || verified.result.url !== target) {
+        return new Response("Webhook verification failed. Please retry later.", { status: 502 });
+      }
+      return new Response("Dalil Spy Bot webhook registered and verified. You can now message the bot with /start.", { status: 200 });
+    }
     if (request.method === "GET") return new Response("Dalil Spy Bot is online.", { status: 200 });
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
     if (!env.BOT_TOKEN || !env.DB) return new Response("Missing BOT_TOKEN or DB binding", { status: 500 });
