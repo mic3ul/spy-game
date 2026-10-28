@@ -133,7 +133,7 @@ async function handleMessage(env, message) {
 
   if (cmd === "/newgame") {
     const existing = await getRoom(env, chatId);
-    if (existing && existing.status !== "closed") {
+    if (existing && existing.status !== "ended" && existing.status !== "closed") {
       return say(env, chatId, "فيه ملف مفتوح بالفعل. خلّصوا الجولة أو استخدموا /endgame أول.");
     }
     await resetRoom(env, chatId);
