@@ -97,11 +97,11 @@ async function handleMessage(env, message) {
   const userId = String(user.id);
 
   if (cmd === "/guess" && !isGroup(message)) {
-    const guess = text.replace(/^\\/guess(?:@\\w+)?\\s*/i, "").trim();
+    const guess = text.replace(/^\/guess(?:@\w+)?\s*/i, "").trim();
     const room = await env.DB.prepare("SELECT * FROM rooms WHERE spy_player_id=? AND status='guessing' ORDER BY created_at DESC LIMIT 1").bind(userId).first();
     if (!room) return say(env, chatId, "ما عندك تخمين مفتوح حالياً. لازم ينكشف دورك أولاً حتى تحصل على فرصة أخيرة.");
     if (!guess) return say(env, chatId, "اكتب تخمينك بعد الأمر، مثال: /guess سوق واقف");
-    const normalize = value => String(value).replace(/[\\u064B-\\u065F\\u0670]/g, "").replace(/[إأآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\\s+/g, " ").trim().toLowerCase();
+    const normalize = value => String(value).replace(/[\u064B-\u065F\u0670]/g, "").replace(/[إأآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim().toLowerCase();
     const correct = normalize(guess) === normalize(room.location);
     await env.DB.prepare("UPDATE rooms SET status='ended' WHERE chat_id=?").bind(room.chat_id).run();
     await say(env, room.chat_id, correct
