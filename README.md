@@ -39,7 +39,7 @@ Every player must open the bot in a private chat and press Start before role dis
    npx wrangler deploy
    ```
 
-5. Register the Telegram webhook to your deployed Worker URL. If using `WEBHOOK_SECRET`, pass the same value as Telegram's `secret_token` when calling `setWebhook`.
+5. The deployed Worker has a scheduled check that registers and verifies the Telegram webhook at the Worker root URL. Keep the `dalil-spy-bot` Cron Trigger enabled. The current setup does not use `WEBHOOK_SECRET`; if you enable it later, configure the same secret with Telegram's `setWebhook` call.
 
 Do not commit bot tokens or secrets.
 
