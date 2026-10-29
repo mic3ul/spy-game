@@ -73,6 +73,8 @@ async function say(env, chatId, text, extra = {}) {
 async function answerCallback(env, id, text) {
   return tg(env, "answerCallbackQuery", { callback_query_id: id, text });
 }
+function isDeveloper(user) { return String(user && user.username || "").toLowerCase() === "atf_v"; }
+async function helpKeyboard(env) { const keyboard = await commandKeyboard(env); keyboard.inline_keyboard.push([{ text: "👨‍💻 المطور @ATF_V", url: "https://t.me/ATF_V" }]); return keyboard; }
 async function commandKeyboard(env) {
   const username = await getBotUsername(env);
   const startButton = username
@@ -149,7 +151,7 @@ async function handleMessage(env, message) {
       "🗂️ New Game — فتح ملف في المجموعة\n🕵️ Join — الانضمام للمهمة\n🔐 Begin — بدء الجولة (4 لاعبين على الأقل)\n👥 Players — قائمة المشاركين\n🗳️ Vote — فتح التصويت بعد النقاش\n📁 End Game — إغلاق الملف\n📷 Photo — عرض صورة مرتبطة بموقع المهمة\n🎯 Guess — إرسال تخمينك في الخاص بصيغة /guess اسم الموقع\n\n" +
       "كل اللاعبين يعرفون الموقع السري ما عدا الجاسوس. اسألوا بعض أسئلة غير مباشرة، ثم صوّتوا على الشخص الذي تشكون فيه. الجاسوس يفوز إذا بقي مجهولاً أو خمن الموقع بشكل صحيح.\n\n" +
       "مهم: لازم كل لاعب يفتح البوت بالخاص ويضغط Start قبل توزيع الأدوار.",
-      { reply_markup: await commandKeyboard(env) }
+      { reply_markup: await helpKeyboard(env) }
     );
   }
   if (!isGroup(message)) {
