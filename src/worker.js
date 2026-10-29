@@ -165,7 +165,6 @@ async function handleMessage(env, message) {
     await resetRoom(env, chatId);
     await env.DB.prepare("INSERT INTO spy_rooms (chat_id, title, host_id, status, round, created_at) VALUES (?, ?, ?, 'waiting', 1, ?)")
       .bind(chatId, message.chat.title || "المجموعة", userId, Date.now()).run();
-    const username = await getBotUsername(env);
     const keyboard = await commandKeyboard(env);
     return sendAnimated(env, chatId,
       "╭━━━ ملف سري رقم 017 ━━━╮\n╰━━━━━━━━━━━━━━━━━━╯\n\n" +
