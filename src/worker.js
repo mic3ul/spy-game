@@ -73,6 +73,21 @@ async function say(env, chatId, text, extra = {}) {
 async function answerCallback(env, id, text) {
   return tg(env, "answerCallbackQuery", { callback_query_id: id, text });
 }
+async function commandKeyboard(env) {
+  const username = await getBotUsername(env);
+  const startButton = username
+    ? { text: "▶️ Start", url: "https://t.me/" + username + "?start=spy" }
+    : { text: "▶️ Start", callback_data: "cmd:/start" };
+  return {
+    inline_keyboard: [
+      [startButton, { text: "❔ Help", callback_data: "cmd:/help" }],
+      [{ text: "🗂️ New Game", callback_data: "cmd:/newgame" }, { text: "🕵️ Join", callback_data: "cmd:/join" }],
+      [{ text: "🔐 Begin", callback_data: "cmd:/begin" }, { text: "👥 Players", callback_data: "cmd:/players" }],
+      [{ text: "🗳️ Vote", callback_data: "cmd:/vote" }, { text: "📷 Photo", callback_data: "cmd:/photo" }],
+      [{ text: "📁 End Game", callback_data: "cmd:/endgame" }, { text: "🎯 Guess", callback_data: "cmd:/guess" }]
+    ]
+  };
+}
 function mention(user) {
   return user.username ? "@" + user.username : (user.first_name || "لاعب");
 }
@@ -122,16 +137,19 @@ async function handleMessage(env, message) {
     return sendAnimated(env, chatId,
       "🕵️ أهلاً بك في العمليات السرّية.\n\n" +
       "هناك جاسوس بينكم، ومهمتك كشفه قبل أن يكتشفكم. لا تثق بالمظاهر؛ كل إجابة قد تكون دليلاً وكل سؤال قد يفضح صاحبه.\n\n" +
-      "أضفني إلى مجموعتك واستخدم /newgame لفتح ملف جديد. افتح هذه المحادثة واضغط Start حتى تصلك بطاقتك السرّية.\n\n" +
-      "الأوامر: /help"
+      "أضفني إلى مجموعتك وافتح ملفاً جديداً من الأزرار أدناه. افتح هذه المحادثة واضغط Start حتى تصلك بطاقتك السرّية.\n\n" +
+      "اختر أمراً من لوحة العمليات:",
+      { reply_markup: await commandKeyboard(env) }
     );
   }
   if (cmd === "/help") {
     return say(env, chatId,
       "🕵️ دليل العمليات السرّية\n\n" +
-      "/newgame — فتح ملف في المجموعة\n/join — الانضمام للمهمة\n/begin — بدء الجولة (4 لاعبين على الأقل)\n/players — قائمة المشاركين\n/vote — فتح التصويت بعد النقاش\n/endgame — إغلاق الملف\n/photo — عرض صورة مرتبطة بموقع المهمة\n\n" +
+      "استخدم الأزرار للوصول إلى أوامر البوت:\n" +
+      "🗂️ New Game — فتح ملف في المجموعة\n🕵️ Join — الانضمام للمهمة\n🔐 Begin — بدء الجولة (4 لاعبين على الأقل)\n👥 Players — قائمة المشاركين\n🗳️ Vote — فتح التصويت بعد النقاش\n📁 End Game — إغلاق الملف\n📷 Photo — عرض صورة مرتبطة بموقع المهمة\n🎯 Guess — إرسال تخمينك في الخاص بصيغة /guess اسم الموقع\n\n" +
       "كل اللاعبين يعرفون الموقع السري ما عدا الجاسوس. اسألوا بعض أسئلة غير مباشرة، ثم صوّتوا على الشخص الذي تشكون فيه. الجاسوس يفوز إذا بقي مجهولاً أو خمن الموقع بشكل صحيح.\n\n" +
-      "مهم: لازم كل لاعب يفتح البوت بالخاص ويضغط /start قبل توزيع الأدوار."
+      "مهم: لازم كل لاعب يفتح البوت بالخاص ويضغط Start قبل توزيع الأدوار.",
+      { reply_markup: await commandKeyboard(env) }
     );
   }
   if (!isGroup(message)) {
@@ -148,10 +166,7 @@ async function handleMessage(env, message) {
     await env.DB.prepare("INSERT INTO spy_rooms (chat_id, title, host_id, status, round, created_at) VALUES (?, ?, ?, 'waiting', 1, ?)")
       .bind(chatId, message.chat.title || "المجموعة", userId, Date.now()).run();
     const username = await getBotUsername(env);
-    const buttons = [];
-    if (username) buttons.push({ text: "▶️ Start", url: "https://t.me/" + username + "?start=spy" });
-    buttons.push({ text: "🕵️ Join", callback_data: "join" });
-    const keyboard = { inline_keyboard: [buttons] };
+    const keyboard = await commandKeyboard(env);
     return sendAnimated(env, chatId,
       "╭━━━ ملف سري رقم 017 ━━━╮\n╰━━━━━━━━━━━━━━━━━━╯\n\n" +
       "ورد بلاغ عن تسريب معلومة من اجتماع مغلق. أحد الموجودين ليس كما يدّعي.\n\n" +
@@ -233,6 +248,18 @@ async function handleCallback(env, query) {
   if (!message) return answerCallback(env, query.id, "افتح اللعبة من المجموعة.");
   const chatId = String(message.chat.id);
   const user = query.from || {};
+  if (data.startsWith("cmd:")) {
+    const command = data.slice(4);
+    await answerCallback(env, query.id, "تم تنفيذ الأمر");
+    if (command === "/guess") {
+      return say(env, chatId, "🎯 أرسل تخمينك في المحادثة الخاصة مع البوت هكذا: /guess اسم الموقع");
+    }
+    return handleMessage(env, {
+      ...message,
+      text: command,
+      from: user
+    });
+  }
   if (data === "join") {
     await answerCallback(env, query.id, "تم فتح التسجيل");
     return joinPlayer(env, chatId, user);
