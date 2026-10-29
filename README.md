@@ -1,4 +1,4 @@
-# Dalil Spy — ظلّ الدوحة
+# Dalil Spy Bot
 
 An Arabic Telegram social-deduction game set in Qatar. One player is the spy; everyone else receives the same secret location. Players ask indirect questions, discuss suspicious answers, and vote to identify the spy.
 
@@ -7,7 +7,7 @@ An Arabic Telegram social-deduction game set in Qatar. One player is the spy; ev
 - Arabic-first game flow with a Qatari/Gulf atmosphere.
 - Location deck inspired by Doha and Qatar: Souq Waqif, Katara, Msheireb, the Corniche, the Museum of Islamic Art, Lusail Stadium, and more.
 - Private role cards, group registration, secret voting, tie handling, and narrative case prompts.
-- The `/photo` command searches Wikimedia Commons for real photographs rather than generating images. Review each selected file's source and license before reusing it outside the bot.
+- The `/photo` command retrieves an image related to the current mission location.
 - Cloudflare Worker + D1 storage.
 
 ## Commands
@@ -18,7 +18,7 @@ An Arabic Telegram social-deduction game set in Qatar. One player is the spy; ev
 - `/players` — show participants.
 - `/vote` — open secret voting.
 - `/endgame` — close and clear the current case.
-- `/photo` — fetch a real photo related to the current location.
+- `/photo` — show an image related to the current location.
 - `/help` — show instructions.
 
 Every player must open the bot in a private chat and press Start before role distribution, otherwise Telegram may prevent the bot from messaging them.
@@ -45,8 +45,8 @@ Do not commit bot tokens or secrets.
 
 ## Story direction
 
-The game is framed as a fictional case file, “File 017”. Each round introduces a small narrative twist. Players are encouraged to use indirect questions and observation rather than naming the location directly. All story elements are fictional and intended for social play.
+The game is framed as a fictional secret case file, “File 017”. Each round introduces a small narrative twist. Players are encouraged to use indirect questions and observation rather than naming the location directly. All story elements are fictional and intended for social play.
 
 ## Images
 
-Photographs are searched from Wikimedia Commons at runtime. Images are not AI-generated. Individual files may have different licenses and attribution requirements; inspect the file page before redistributing any image outside Telegram.
+Images related to the mission location are retrieved from Wikimedia Commons. Individual files may have different licenses and attribution requirements; inspect the file page before redistributing an image outside Telegram.
