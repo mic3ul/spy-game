@@ -185,8 +185,9 @@ async function handleMessage(env, message) {
   if (cmd === "/endgame") {
     const room = await getRoom(env, chatId);
     if (!room) return say(env, chatId, "ما فيه ملف مفتوح.");
+    if (!isDeveloper(user) && String(room.host_id) !== userId) return say(env, chatId, "هذا الأمر للمطور @ATF_V أو لمن فتح الجولة فقط.");
     await resetRoom(env, chatId);
-    return say(env, chatId, "تم إغلاق الملف. تُحفظ الأسرار داخل اللعبة فقط — نلتقي في القضية القادمة.");
+    return say(env, chatId, "🛑 تم إنهاء الجولة وإغلاق الملف بواسطة " + (isDeveloper(user) ? "المطور @ATF_V" : "منشئ الجولة") + ". يمكنكم فتح جولة جديدة باستخدام /newgame.");
   }
   if (cmd === "/photo") return sendRealPhoto(env, chatId, await getRoom(env, chatId));
   return null;
