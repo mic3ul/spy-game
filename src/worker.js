@@ -119,16 +119,16 @@ async function handleMessage(env, message) {
   }
 
   if (cmd === "/start") {
-    return say(env, chatId,
-      "حيّاك الله في «ظلّ الدوحة» — لعبة شكّ وتحقيق ومهمات سرّية.\n\n" +
-      "أضفني إلى مجموعتك، ثم استخدم /newgame لفتح ملف جديد.\n" +
-      "قبل اللعب، افتح محادثتي الخاصة واضغط Start حتى أقدر أرسل لك دورك سرّاً.\n\n" +
+    return sendAnimated(env, chatId,
+      "🕵️ أهلاً بك في العمليات السرّية.\n\n" +
+      "هناك جاسوس بينكم، ومهمتك كشفه قبل أن يكتشفكم. لا تثق بالمظاهر؛ كل إجابة قد تكون دليلاً وكل سؤال قد يفضح صاحبه.\n\n" +
+      "أضفني إلى مجموعتك واستخدم /newgame لفتح ملف جديد. افتح هذه المحادثة واضغط Start حتى تصلك بطاقتك السرّية.\n\n" +
       "الأوامر: /help"
     );
   }
   if (cmd === "/help") {
     return say(env, chatId,
-      "🕵️ ظلّ الدوحة | دليل سريع\n\n" +
+      "🕵️ دليل العمليات السرّية\n\n" +
       "/newgame — فتح ملف في المجموعة\n/join — الانضمام للمهمة\n/begin — بدء الجولة (4 لاعبين على الأقل)\n/players — قائمة المشاركين\n/vote — فتح التصويت بعد النقاش\n/endgame — إغلاق الملف\n/photo — صورة فوتوغرافية حقيقية للموقع\n\n" +
       "كل اللاعبين يعرفون الموقع السري ما عدا الجاسوس. اسألوا بعض أسئلة غير مباشرة، ثم صوّتوا على الشخص الذي تشكون فيه. الجاسوس يفوز إذا بقي مجهولاً أو خمن الموقع بشكل صحيح.\n\n" +
       "مهم: لازم كل لاعب يفتح البوت بالخاص ويضغط /start قبل توزيع الأدوار."
@@ -153,7 +153,7 @@ async function handleMessage(env, message) {
     buttons.push({ text: "🕵️ Join", callback_data: "join" });
     const keyboard = { inline_keyboard: [buttons] };
     return sendAnimated(env, chatId,
-      "╭━━━ ملف رقم 017 ━━━╮\n«ظلّ الدوحة»\n╰━━━━━━━━━━━━━━╯\n\n" +
+      "╭━━━ ملف سري رقم 017 ━━━╮\n╰━━━━━━━━━━━━━━━━━━╯\n\n" +
       "ورد بلاغ عن تسريب معلومة من اجتماع مغلق. أحد الموجودين ليس كما يدّعي.\n\n" +
       "اضغط Join للانضمام إلى الملف، أو Start لفتح البوت بالخاص وتفعيل استقبال بطاقتك السرّية. تحتاجون 4 لاعبين على الأقل.\n" +
       "بعد الضغط على Start، اضغط Start داخل المحادثة الخاصة أيضاً.",
@@ -300,7 +300,7 @@ async function sendRealPhoto(env, chatId, room) {
       const searchable = [p.title, meta.Description && meta.Description.value].join(" ").replace(/<[^>]*>/g, " ");
       return !/(AI[- ]generated|artificial intelligence|Midjourney|Stable Diffusion|DALL[- ]?E|synthetic image|illustration|digital art|rendering)/i.test(searchable);
     });
-    if (!candidates.length) return say(env, chatId, "ما حصلت صورة فوتوغرافية مناسبة الحين. جرّب /photo بعد شوي. الصور تُجلب من ويكيميديا كومنز وليست مولّدة داخل اللعبة.");
+    if (!candidates.length) return say(env, chatId, "تعذّر العثور على صورة مناسبة للموقع حالياً. جرّب /photo بعد قليل.");
     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
     const info = chosen.imageinfo[0];
     const imageUrl = info.thumburl || info.url;
@@ -312,11 +312,11 @@ async function sendRealPhoto(env, chatId, room) {
     return tg(env, "sendPhoto", {
       chat_id: chatId,
       photo: imageUrl,
-      caption: "📷 صورة فوتوغرافية من ويكيميديا كومنز\nالمشهد: " + location + "\nالملف: " + title + "\nالمصوّر: " + creator + "\nالترخيص: " + license + "\nالمصدر: " + sourceUrl
+      caption: "📁 أرشيف المهمة\nالموقع: " + location + "\nالملف: " + title + "\nالمصوّر: " + creator + "\nالترخيص: " + license + "\nالمصدر: " + sourceUrl
     });
   } catch (error) {
     console.error("Photo search failed", error);
-    return say(env, chatId, "تعذّر جلب الصورة حالياً. تقدرون تواصلون اللعبة؛ الصور تُجلب من أرشيف فوتوغرافي حقيقي وليست مولّدة.");
+    return say(env, chatId, "تعذّر جلب صورة للمهمة حالياً. تقدرون تواصلون اللعبة.");
   }
 }
 export default {
