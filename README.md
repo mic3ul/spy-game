@@ -7,19 +7,19 @@ An Arabic Telegram social-deduction game set in Qatar. One player is the spy; ev
 - Arabic-first game flow with a Qatari/Gulf atmosphere.
 - Location deck inspired by Doha and Qatar: Souq Waqif, Katara, Msheireb, the Corniche, the Museum of Islamic Art, Lusail Stadium, and more.
 - Private role cards, group registration, secret voting, tie handling, and narrative case prompts.
-- The `/photo` command retrieves an image related to the current mission location.
+- The `/spy_photo` command retrieves an image related to the current mission location.
 - Cloudflare Worker + D1 storage.
 
 ## Commands
 
-- `/newgame` — open a case in a group.
-- `/join` — join the current case.
-- `/begin` — assign roles and start (minimum four players).
-- `/players` — show participants.
-- `/vote` — open secret voting.
-- `/endgame` — close and clear the current case.
-- `/photo` — show an image related to the current location.
-- `/help` — show instructions.
+- `/spy_startgame` — open a case in a group.
+- `/spy_join` — join the current case.
+- `/spy_begin` — assign roles and start (minimum four players).
+- `/spy_players` — show participants.
+- `/spy_vote` — open secret voting.
+- `/spy_endgame` — close and clear the current case.
+- `/spy_photo` — show an image related to the current location.
+- `/spy_help` — show instructions.
 
 Every player must open the bot in a private chat and press Start before role distribution, otherwise Telegram may prevent the bot from messaging them.
 
