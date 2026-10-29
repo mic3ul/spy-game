@@ -82,11 +82,11 @@ async function commandKeyboard(env) {
     : { text: "▶️ Start", callback_data: "cmd:/start" };
   return {
     inline_keyboard: [
-      [startButton, { text: "❔ Help", callback_data: "cmd:/help" }],
-      [{ text: "🗂️ New Game", callback_data: "cmd:/newgame" }, { text: "🕵️ Join", callback_data: "cmd:/join" }],
-      [{ text: "🔐 Begin", callback_data: "cmd:/begin" }, { text: "👥 Players", callback_data: "cmd:/players" }],
-      [{ text: "🗳️ Vote", callback_data: "cmd:/vote" }, { text: "📷 Photo", callback_data: "cmd:/photo" }],
-      [{ text: "📁 End Game", callback_data: "cmd:/endgame" }, { text: "🎯 Guess", callback_data: "cmd:/guess" }]
+      [startButton, { text: "❔ Help", callback_data: "cmd:/spy_help" }],
+      [{ text: "🗂️ New Game", callback_data: "cmd:/spy_startgame" }, { text: "🕵️ Join", callback_data: "cmd:/spy_join" }],
+      [{ text: "🔐 Begin", callback_data: "cmd:/spy_begin" }, { text: "👥 Players", callback_data: "cmd:/spy_players" }],
+      [{ text: "🗳️ Vote", callback_data: "cmd:/spy_vote" }, { text: "📷 Photo", callback_data: "cmd:/spy_photo" }],
+      [{ text: "📁 End Game", callback_data: "cmd:/spy_endgame" }, { text: "🎯 Guess", callback_data: "cmd:/spy_guess" }]
     ]
   };
 }
@@ -121,11 +121,11 @@ async function handleMessage(env, message) {
   const user = message.from || {};
   const userId = String(user.id);
 
-  if (cmd === "/guess" && !isGroup(message)) {
-    const guess = text.replace(/^\/guess(?:@\w+)?\s*/i, "").trim();
+  if (cmd === "/spy_guess" && !isGroup(message)) {
+    const guess = text.replace(/^\/spy_guess(?:@\w+)?\s*/i, "").trim();
     const room = await env.DB.prepare("SELECT * FROM spy_rooms WHERE spy_player_id=? AND status='guessing' ORDER BY created_at DESC LIMIT 1").bind(userId).first();
     if (!room) return say(env, chatId, "ما عندك تخمين مفتوح حالياً. لازم ينكشف دورك أولاً حتى تحصل على فرصة أخيرة.");
-    if (!guess) return say(env, chatId, "اكتب تخمينك بعد الأمر، مثال: /guess سوق واقف");
+    if (!guess) return say(env, chatId, "اكتب تخمينك بعد الأمر، مثال: /spy_guess سوق واقف");
     const normalize = value => String(value).replace(/[\u064B-\u065F\u0670]/g, "").replace(/[إأآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim().toLowerCase();
     const correct = normalize(guess) === normalize(room.location);
     await env.DB.prepare("UPDATE spy_rooms SET status='ended' WHERE chat_id=?").bind(room.chat_id).run();
@@ -135,7 +135,7 @@ async function handleMessage(env, message) {
     return say(env, chatId, correct ? "إجابة صحيحة. فزت بالملف." : "تخمين غير صحيح. انتهت فرصتك.");
   }
 
-  if (cmd === "/start") {
+  if (cmd === "/start" && !isGroup(message)) {
     return sendAnimated(env, chatId,
       "🕵️ أهلاً بك في العمليات السرّية.\n\n" +
       "هناك جاسوس بينكم، ومهمتك كشفه قبل أن يكتشفكم. لا تثق بالمظاهر؛ كل إجابة قد تكون دليلاً وكل سؤال قد يفضح صاحبه.\n\n" +
@@ -144,25 +144,25 @@ async function handleMessage(env, message) {
       { reply_markup: await commandKeyboard(env) }
     );
   }
-  if (cmd === "/help") {
+  if (cmd === "/spy_help") {
     return say(env, chatId,
       "🕵️ دليل العمليات السرّية\n\n" +
       "استخدم الأزرار للوصول إلى أوامر البوت:\n" +
-      "🗂️ New Game — فتح ملف في المجموعة\n🕵️ Join — الانضمام للمهمة\n🔐 Begin — بدء الجولة (4 لاعبين على الأقل)\n👥 Players — قائمة المشاركين\n🗳️ Vote — فتح التصويت بعد النقاش\n📁 End Game — إغلاق الملف\n📷 Photo — عرض صورة مرتبطة بموقع المهمة\n🎯 Guess — إرسال تخمينك في الخاص بصيغة /guess اسم الموقع\n\n" +
+      "🗂️ New Game — فتح ملف في المجموعة\n🕵️ Join — الانضمام للمهمة\n🔐 Begin — بدء الجولة (4 لاعبين على الأقل)\n👥 Players — قائمة المشاركين\n🗳️ Vote — فتح التصويت بعد النقاش\n📁 End Game — إغلاق الملف\n📷 Photo — عرض صورة مرتبطة بموقع المهمة\n🎯 Guess — إرسال تخمينك في الخاص بصيغة /spy_guess اسم الموقع\n\n" +
       "كل اللاعبين يعرفون الموقع السري ما عدا الجاسوس. اسألوا بعض أسئلة غير مباشرة، ثم صوّتوا على الشخص الذي تشكون فيه. الجاسوس يفوز إذا بقي مجهولاً أو خمن الموقع بشكل صحيح.\n\n" +
       "مهم: لازم كل لاعب يفتح البوت بالخاص ويضغط Start قبل توزيع الأدوار.",
       { reply_markup: await helpKeyboard(env) }
     );
   }
   if (!isGroup(message)) {
-    if (cmd === "/photo") return sendRealPhoto(env, chatId, null);
-    return say(env, chatId, "هلا والله! افتح المجموعة وابدأ بـ /newgame، ولا تنسَ تضغط /start هنا عشان توصلك بطاقتك السرّية.");
+    if (cmd === "/spy_photo") return sendRealPhoto(env, chatId, null);
+    return say(env, chatId, "هلا والله! افتح المجموعة وابدأ بـ /spy_startgame، ولا تنسَ تضغط /start هنا عشان توصلك بطاقتك السرّية.");
   }
 
-  if (cmd === "/newgame") {
+  if (cmd === "/spy_startgame") {
     const existing = await getRoom(env, chatId);
     if (existing && existing.status !== "ended" && existing.status !== "closed") {
-      return say(env, chatId, "فيه ملف مفتوح بالفعل. خلّصوا الجولة أو استخدموا /endgame أول.");
+      return say(env, chatId, "فيه ملف مفتوح بالفعل. خلّصوا الجولة أو استخدموا /spy_endgame أول.");
     }
     await resetRoom(env, chatId);
     await env.DB.prepare("INSERT INTO spy_rooms (chat_id, title, host_id, status, round, created_at) VALUES (?, ?, ?, 'waiting', 1, ?)")
@@ -176,27 +176,27 @@ async function handleMessage(env, message) {
       { reply_markup: keyboard }
     );
   }
-  if (cmd === "/join") return joinPlayer(env, chatId, user);
-  if (cmd === "/players") {
+  if (cmd === "/spy_join") return joinPlayer(env, chatId, user);
+  if (cmd === "/spy_players") {
     const players = await getPlayers(env, chatId);
-    if (!players.length) return say(env, chatId, "ما فيه أحد انضم للملف للحين. استخدموا /join.");
+    if (!players.length) return say(env, chatId, "ما فيه أحد انضم للملف للحين. استخدموا /spy_join.");
     return say(env, chatId, "👥 فريق الملف:\n" + players.map((p, i) => (i + 1) + ". " + p.first_name + (p.alive ? "" : " — خرج من الجولة")).join("\n"));
   }
-  if (cmd === "/begin") return beginGame(env, chatId);
-  if (cmd === "/vote") return openVote(env, chatId);
-  if (cmd === "/endgame") {
+  if (cmd === "/spy_begin") return beginGame(env, chatId);
+  if (cmd === "/spy_vote") return openVote(env, chatId);
+  if (cmd === "/spy_endgame") {
     const room = await getRoom(env, chatId);
     if (!room) return say(env, chatId, "ما فيه ملف مفتوح.");
     if (!isDeveloper(user) && String(room.host_id) !== userId) return say(env, chatId, "هذا الأمر للمطور @ATF_V أو لمن فتح الجولة فقط.");
     await resetRoom(env, chatId);
-    return say(env, chatId, "🛑 تم إنهاء الجولة وإغلاق الملف بواسطة " + (isDeveloper(user) ? "المطور @ATF_V" : "منشئ الجولة") + ". يمكنكم فتح جولة جديدة باستخدام /newgame.");
+    return say(env, chatId, "🛑 تم إنهاء الجولة وإغلاق الملف بواسطة " + (isDeveloper(user) ? "المطور @ATF_V" : "منشئ الجولة") + ". يمكنكم فتح جولة جديدة باستخدام /spy_startgame.");
   }
-  if (cmd === "/photo") return sendRealPhoto(env, chatId, await getRoom(env, chatId));
+  if (cmd === "/spy_photo") return sendRealPhoto(env, chatId, await getRoom(env, chatId));
   return null;
 }
 async function joinPlayer(env, chatId, user) {
   const room = await getRoom(env, chatId);
-  if (!room || room.status !== "waiting") return say(env, chatId, "ما فيه ملف ينتظر لاعبين. افتحوا ملفاً جديداً بـ /newgame.");
+  if (!room || room.status !== "waiting") return say(env, chatId, "ما فيه ملف ينتظر لاعبين. افتحوا ملفاً جديداً بـ /spy_startgame.");
   const userId = String(user.id);
   const existing = await env.DB.prepare("SELECT user_id FROM spy_players WHERE chat_id = ? AND user_id = ?").bind(chatId, userId).first();
   if (existing) return say(env, chatId, "أنت مسجل معنا بالفعل يا " + mention(user) + ".");
@@ -207,7 +207,7 @@ async function joinPlayer(env, chatId, user) {
 }
 async function beginGame(env, chatId) {
   const room = await getRoom(env, chatId);
-  if (!room || room.status !== "waiting") return say(env, chatId, "افتحوا ملفاً جديداً أولاً بـ /newgame.");
+  if (!room || room.status !== "waiting") return say(env, chatId, "افتحوا ملفاً جديداً أولاً بـ /spy_startgame.");
   const players = await getPlayers(env, chatId);
   if (players.length < 4) return say(env, chatId, "نحتاج 4 لاعبين على الأقل عشان تبدأ اللعبة. الموجودون: " + players.length + ".");
   const location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
@@ -231,7 +231,7 @@ async function beginGame(env, chatId) {
   return say(env, chatId,
     "🔒 أُغلق الظرف وبدأت المهمة.\n\n" + scene + "\n\n" +
     "عندكم 5 دقائق للنقاش. لا تذكروا الموقع صراحة. اسألوا عن تفاصيل التجربة، لا عن الاسم.\n" +
-    "بعد النقاش استخدموا /vote لبدء التصويت. الجاسوس، لا تتسرع."
+    "بعد النقاش استخدموا /spy_vote لبدء التصويت. الجاسوس، لا تتسرع."
   );
 }
 async function openVote(env, chatId) {
@@ -253,8 +253,8 @@ async function handleCallback(env, query) {
   if (data.startsWith("cmd:")) {
     const command = data.slice(4);
     await answerCallback(env, query.id, "تم تنفيذ الأمر");
-    if (command === "/guess") {
-      return say(env, chatId, "🎯 أرسل تخمينك في المحادثة الخاصة مع البوت هكذا: /guess اسم الموقع");
+    if (command === "/spy_guess") {
+      return say(env, chatId, "🎯 أرسل تخمينك في المحادثة الخاصة مع البوت هكذا: /spy_guess اسم الموقع");
     }
     return handleMessage(env, {
       ...message,
@@ -290,7 +290,7 @@ async function resolveVote(env, chatId, room) {
   if (rows.length > 1 && rows[0].n === rows[1].n) {
     await env.DB.prepare("UPDATE spy_rooms SET status='playing' WHERE chat_id=?").bind(chatId).run();
     await removeVotes(env, chatId);
-    return say(env, chatId, "⚖️ تعادل في الأصوات. ما فيه إدانة هالجولة. خذوا دقيقة للنقاش ثم استخدموا /vote مرة ثانية.");
+    return say(env, chatId, "⚖️ تعادل في الأصوات. ما فيه إدانة هالجولة. خذوا دقيقة للنقاش ثم استخدموا /spy_vote مرة ثانية.");
   }
   const accusedId = rows[0].target_id;
   const players = await getPlayers(env, chatId);
@@ -298,7 +298,7 @@ async function resolveVote(env, chatId, room) {
   const spyCaught = accusedId === room.spy_player_id;
   await env.DB.prepare("UPDATE spy_rooms SET status=? WHERE chat_id=?").bind(spyCaught ? "guessing" : "ended", chatId).run();
   const storyEnding = spyCaught
-    ? "تم كشف الجاسوس. بقيت له فرصة أخيرة: يرسل للمحادثة الخاصة /guess ثم اسم المكان. لن يُكشف الموقع قبل تخمينه."
+    ? "تم كشف الجاسوس. بقيت له فرصة أخيرة: يرسل للمحادثة الخاصة /spy_guess ثم اسم المكان. لن يُكشف الموقع قبل تخمينه."
     : "اتهمتم الشخص الخطأ. الجاسوس أفلت من الرقابة وربح الجولة.";
   const spyName = players.find(p => p.user_id === room.spy_player_id)?.first_name || "غير معروف";
   const resultText =
@@ -309,7 +309,7 @@ async function resolveVote(env, chatId, room) {
     storyEnding + "\n" +
     (spyCaught ? "" : "\nالموقع الحقيقي: " + room.location + "\n") +
     "الجاسوس كان: " + spyName +
-    "\n\nابدؤوا قضية جديدة باستخدام /newgame.";
+    "\n\nابدؤوا قضية جديدة باستخدام /spy_startgame.";
   return sendAnimated(env, chatId, resultText);
 }
 async function sendRealPhoto(env, chatId, room) {
@@ -329,7 +329,7 @@ async function sendRealPhoto(env, chatId, room) {
       const searchable = [p.title, meta.Description && meta.Description.value].join(" ").replace(/<[^>]*>/g, " ");
       return !/(AI[- ]generated|artificial intelligence|Midjourney|Stable Diffusion|DALL[- ]?E|synthetic image|illustration|digital art|rendering)/i.test(searchable);
     });
-    if (!candidates.length) return say(env, chatId, "تعذّر العثور على صورة مناسبة للموقع حالياً. جرّب /photo بعد قليل.");
+    if (!candidates.length) return say(env, chatId, "تعذّر العثور على صورة مناسبة للموقع حالياً. جرّب /spy_photo بعد قليل.");
     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
     const info = chosen.imageinfo[0];
     const imageUrl = info.thumburl || info.url;
